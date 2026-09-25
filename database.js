@@ -7,10 +7,10 @@ class JSONDatabase {
     this.filePath = filePath || path.join(__dirname, 'data', 'transactions.json');
     this.backupDir = path.join(__dirname, 'data', 'backups');
     
-    // Cloud Mode (Vercel KV) config
+    // Cloud Mode (Vercel KV / Upstash Redis) config
     this.kv = null;
-    const KV_URL = process.env.KV_REST_API_URL;
-    const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+    const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL;
+    const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN;
 
     if (KV_URL && KV_TOKEN) {
       try {
@@ -19,9 +19,9 @@ class JSONDatabase {
           url: KV_URL,
           token: KV_TOKEN,
         });
-        console.log('[INFO] Vercel KV database client initialized successfully (Cloud Mode).');
+        console.log('[INFO] Cloud Redis (Vercel/Upstash) database client initialized successfully (Cloud Mode).');
       } catch (e) {
-        console.error('Failed to initialize Vercel KV client:', e);
+        console.error('Failed to initialize Cloud Redis client:', e);
       }
     }
 
