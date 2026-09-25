@@ -42,12 +42,20 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Form States
   const [formType, setFormType] = useState('income');
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState('Hotel Income');
   const [formCommissionRate, setFormCommissionRate] = useState('23');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(getTodayString());
   const [formNotes, setFormNotes] = useState('');
   const [formUser, setFormUser] = useState('Husband');
   const [editingId, setEditingId] = useState(null);
@@ -70,7 +78,11 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/transactions');
+      const response = await fetch('/api/transactions', {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       if (!response.ok) throw new Error('Failed to fetch transactions');
       const data = await response.json();
       setTransactions(data);
@@ -114,13 +126,19 @@ export default function App() {
       if (editingId) {
         response = await fetch(`/api/transactions/${editingId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
           body: JSON.stringify(transactionData)
         });
       } else {
         response = await fetch('/api/transactions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
           body: JSON.stringify(transactionData)
         });
       }
@@ -144,7 +162,7 @@ export default function App() {
     setFormAmount(tx.amount.toString());
     setFormCategory(tx.category);
     setFormCommissionRate((tx.commissionRate !== undefined ? tx.commissionRate : 23).toString());
-    setFormDate(tx.date);
+    setFormDate(tx.date || getTodayString());
     setFormNotes(tx.notes || '');
     setFormUser(tx.addedBy || 'Husband');
     setIsModalOpen(true);
@@ -157,7 +175,10 @@ export default function App() {
     setLoading(true);
     try {
       const response = await fetch(`/api/transactions/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
       await fetchTransactions();
@@ -174,7 +195,7 @@ export default function App() {
     setEditingId(null);
     setFormAmount('');
     setFormNotes('');
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(getTodayString());
     setFormType('income');
     setFormCategory('Hotel Income');
     setFormCommissionRate('23');
@@ -211,8 +232,12 @@ export default function App() {
   // --- Filtering & Hotel Calculations ---
   
   const monthlyTransactions = transactions.filter(tx => {
-    const txDate = new Date(tx.date);
-    return txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth;
+    if (!tx.date) return false;
+    const parts = tx.date.split('-');
+    if (parts.length < 3) return false;
+    const txYear = parseInt(parts[0], 10);
+    const txMonth = parseInt(parts[1], 10) - 1; // 0-indexed month
+    return txYear === currentYear && txMonth === currentMonth;
   });
 
   // Calculate Hotel Business Aggregates
