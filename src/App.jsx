@@ -857,7 +857,8 @@ export default function App() {
       {/* Floating Add Action Button */}
       <button 
         onClick={() => { setEditingId(null); setIsModalOpen(true); }}
-        className="fixed bottom-22 left-1/2 -translate-x-1/2 w-14 h-14 bg-gradient-to-tr from-indigo-600 to-amber-500 hover:from-indigo-500 hover:to-amber-400 text-white rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition z-30 border border-white/20"
+        style={{ bottom: '1.25rem', left: '50%', transform: 'translateX(-50%)' }}
+        className="fixed w-14 h-14 bg-gradient-to-tr from-indigo-600 to-amber-500 hover:from-indigo-500 hover:to-amber-400 text-white rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition z-30 border border-white/20"
       >
         <Plus size={28} />
       </button>
