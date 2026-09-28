@@ -8,20 +8,25 @@ class JSONDatabase {
     this.backupDir = path.join(__dirname, 'data', 'backups');
     
     // Cloud Mode (Vercel KV / Upstash Redis) config
-    this.kv = null;
-    const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL;
-    const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN;
+    this.kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL || null;
+    this.kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN || null;
 
-    if (KV_URL && KV_TOKEN) {
+    // Clean URL if wrapped in quotes or whitespace
+    if (this.kvUrl) this.kvUrl = this.kvUrl.trim().replace(/^["']|["']$/g, '');
+    if (this.kvToken) this.kvToken = this.kvToken.trim().replace(/^["']|["']$/g, '');
+
+    this.kv = null;
+
+    if (this.kvUrl && this.kvToken) {
       try {
         const { createClient } = require('@vercel/kv');
         this.kv = createClient({
-          url: KV_URL,
-          token: KV_TOKEN,
+          url: this.kvUrl,
+          token: this.kvToken,
         });
-        console.log('[INFO] Cloud Redis (Vercel/Upstash) database client initialized successfully (Cloud Mode).');
+        console.log('[INFO] Cloud Redis (@vercel/kv) client initialized successfully (Cloud Mode).');
       } catch (e) {
-        console.error('Failed to initialize Cloud Redis client:', e);
+        console.log('[INFO] @vercel/kv client initialization skipped, using direct HTTP REST API fallback.');
       }
     }
 
@@ -29,8 +34,8 @@ class JSONDatabase {
   }
 
   init() {
-    // If in Cloud Mode, we don't need to create local directories
-    if (this.kv) return;
+    // If in Cloud Mode, we don't need to create local file system directories
+    if (this.kvUrl && this.kvToken) return;
 
     const dir = path.dirname(this.filePath);
     if (!fs.existsSync(dir)) {
@@ -54,7 +59,7 @@ class JSONDatabase {
     }
   }
 
-  // Synchronous helpers only used in constructor/init (before async context)
+  // Synchronous helpers only used in constructor/init for local mode
   writeRawSync(data) {
     const tempPath = `${this.filePath}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
@@ -86,47 +91,109 @@ class JSONDatabase {
   // Core Async Read/Write operations
 
   async readRaw() {
+    // 1. Try @vercel/kv client if available
     if (this.kv) {
       try {
         const data = await this.kv.get('family-budget:transactions');
-        return data || [];
+        return Array.isArray(data) ? data : (typeof data === 'string' ? JSON.parse(data) : []);
       } catch (e) {
-        console.error('Error reading from Vercel KV:', e);
-        return [];
+        console.error('[WARN] @vercel/kv get failed, attempting direct REST fetch fallback:', e.message);
       }
     }
 
-    // Local file fallback
+    // 2. Direct HTTP REST API fallback for Upstash Redis
+    if (this.kvUrl && this.kvToken) {
+      try {
+        const cleanUrl = this.kvUrl.replace(/\/+$/, '');
+        const res = await fetch(`${cleanUrl}/get/family-budget:transactions`, {
+          headers: {
+            'Authorization': `Bearer ${this.kvToken}`
+          }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          let rawVal = json.result;
+          if (!rawVal) return [];
+          if (typeof rawVal === 'string') {
+            try { return JSON.parse(rawVal); } catch (e) { return []; }
+          }
+          return Array.isArray(rawVal) ? rawVal : [];
+        } else {
+          console.error('[ERROR] Upstash REST GET returned non-200 status:', res.status);
+        }
+      } catch (e) {
+        console.error('[ERROR] Upstash REST GET fetch error:', e.message);
+      }
+      return [];
+    }
+
+    // 3. Local file fallback
     try {
+      if (!fs.existsSync(this.filePath)) return [];
       const content = fs.readFileSync(this.filePath, 'utf8');
       return JSON.parse(content);
     } catch (err) {
-      console.error('Failed to read database file:', err);
+      console.error('Failed to read local database file:', err);
       return [];
     }
   }
 
   async writeRaw(data) {
+    let cloudSaveSuccess = false;
+
+    // 1. Try @vercel/kv client
     if (this.kv) {
       try {
         await this.kv.set('family-budget:transactions', data);
-        return true;
+        console.log('[SUCCESS] Saved transactions to Cloud Redis via @vercel/kv client.');
+        cloudSaveSuccess = true;
       } catch (e) {
-        console.error('Error writing to Vercel KV:', e);
-        return false;
+        console.error('[WARN] @vercel/kv set failed, attempting direct REST POST fallback:', e.message);
       }
     }
 
-    // Local file fallback
+    // 2. Direct HTTP REST API fallback for Upstash Redis
+    if (!cloudSaveSuccess && this.kvUrl && this.kvToken) {
+      try {
+        const cleanUrl = this.kvUrl.replace(/\/+$/, '');
+        const res = await fetch(`${cleanUrl}/set/family-budget:transactions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.kvToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          console.log('[SUCCESS] Saved transactions to Upstash Cloud Redis via direct HTTP REST API.');
+          cloudSaveSuccess = true;
+        } else {
+          const errText = await res.text();
+          console.error('[ERROR] Upstash REST SET returned non-200 status:', res.status, errText);
+        }
+      } catch (e) {
+        console.error('[ERROR] Upstash REST SET fetch error:', e.message);
+      }
+    }
+
+    if (this.kvUrl && this.kvToken) {
+      if (!cloudSaveSuccess) {
+        throw new Error('FAILED_TO_SAVE_TO_CLOUD_DATABASE: Cloud database set operation failed.');
+      }
+      return true;
+    }
+
+    // 3. Local file fallback
     try {
       const tempPath = `${this.filePath}.tmp`;
       fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
       fs.renameSync(tempPath, this.filePath);
       this.autoBackup();
+      console.log('[SUCCESS] Saved transactions to local file database.');
       return true;
     } catch (err) {
       console.error('Failed to write database file:', err);
-      return false;
+      throw new Error(`LOCAL_DB_WRITE_FAILED: ${err.message}`);
     }
   }
 
@@ -171,6 +238,8 @@ class JSONDatabase {
       createdAt: new Date().toISOString()
     };
     items.push(newTransaction);
+
+    // Will throw Error if write fails, so caller receives error status!
     await this.writeRaw(items);
     return newTransaction;
   }
