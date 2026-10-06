@@ -51,8 +51,8 @@
 /* Clean Mini Print Receipt Styling (A6 / 1/4 A4 Paper & 80mm POS Thermal Printer support) */
 @media print {
   @page {
-    size: A6 portrait;
-    margin: 0; /* 0 margins so paper dimensions match A6 105mm x 148mm exactly */
+    size: auto;
+    margin: 5mm; /* 5mm safe margin for physical printer hardware printable area */
   }
 
   /* Override dark mode on all root containers for iOS Safari & Desktop */
@@ -86,17 +86,17 @@
     visibility: visible !important;
   }
 
-  /* Compact printable receipt fitting A6 paper (1/4 A4) identically on PC & Mobile */
+  /* Compact printable receipt fitting A6 paper (1/4 A4) inside printer safe margins */
   .printable-bill-container {
     display: block !important;
-    position: absolute !important;
-    top: 4mm !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 96mm !important;
-    max-width: 96mm !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 6px 8px !important;
     background: #ffffff !important;
     color: #000000 !important;
