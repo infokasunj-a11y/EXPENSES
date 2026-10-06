@@ -51,15 +51,16 @@
 /* Clean Mini Print Receipt Styling (A6 / 1/4 A4 Paper & 80mm POS Thermal Printer support) */
 @media print {
   @page {
-    size: auto;
-    margin: 4mm;
+    size: A6 portrait;
+    margin: 0; /* 0 margins so paper dimensions match A6 105mm x 148mm exactly */
   }
 
   /* Override dark mode on all root containers for iOS Safari & Desktop */
-  html, body, #root, #root > div, main, div {
+  html, body, #root, #root > div, main {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
+    width: 100% !important;
     min-height: 0 !important;
     height: auto !important;
     max-height: none !important;
@@ -85,15 +86,16 @@
     visibility: visible !important;
   }
 
-  /* Compact printable receipt fitting A6 paper (1/4 A4) cleanly without black backgrounds or 2nd page */
+  /* Compact printable receipt fitting A6 paper (1/4 A4) identically on PC & Mobile */
   .printable-bill-container {
     display: block !important;
     position: absolute !important;
-    top: 0 !important;
+    top: 4mm !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
-    width: 100% !important;
-    max-width: 96mm !important; /* Mini compact width for A6 / POS Thermal */
+    width: 96mm !important;
+    max-width: 96mm !important;
+    box-sizing: border-box !important;
     margin: 0 !important;
     padding: 6px 8px !important;
     background: #ffffff !important;
@@ -102,7 +104,7 @@
     border: 1px solid #cbd5e1 !important;
     border-radius: 6px !important;
     font-size: 9.5px !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
   }
 
   .printable-bill-container img {
