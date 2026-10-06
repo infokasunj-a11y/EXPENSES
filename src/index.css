@@ -48,11 +48,11 @@
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Clean Mini Print Receipt Styling (Exact 1/4 A4 / A6 Paper Size - 88mm Width) */
+/* Clean Mini Print Receipt Styling (Exact Physical 1/4 A4 Cut Paper: 105mm x 148mm) */
 @media print {
   @page {
-    size: A6 portrait;
-    margin: 4mm;
+    size: 105mm 148mm; /* Exact physical dimensions of 1/4 A4 cut paper */
+    margin: 0; /* 0 page margin so container fills the cut sheet exactly */
   }
 
   /* Force white background & reset wrapper constraints */
@@ -60,17 +60,18 @@
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
-    width: 100% !important;
-    min-height: 0 !important;
-    height: auto !important;
-    max-height: none !important;
+    width: 105mm !important;
+    height: 148mm !important;
+    max-width: 105mm !important;
+    max-height: 148mm !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: hidden !important;
   }
 
-  /* Hide app navigation, headers, floating buttons, modals background */
+  /* Hide app navigation, headers, floating buttons */
   header, nav, button, .no-print, svg {
     display: none !important;
   }
@@ -86,67 +87,70 @@
     visibility: visible !important;
   }
 
-  /* Fixed compact 1/4 A4 size receipt card (88mm width x centered) */
+  /* Exact 1/4 A4 Cut Paper Container (105mm x 148mm) */
   .printable-bill-container {
     display: block !important;
-    position: relative !important;
+    position: absolute !important;
     top: 0 !important;
     left: 0 !important;
-    width: 88mm !important;
-    max-width: 88mm !important;
+    width: 105mm !important;
+    height: 148mm !important;
+    max-width: 105mm !important;
+    max-height: 148mm !important;
     box-sizing: border-box !important;
-    margin: 0 auto !important;
-    padding: 6px 8px !important;
+    margin: 0 !important;
+    padding: 4mm 5mm !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 6px !important;
-    font-size: 9.5px !important;
-    line-height: 1.25 !important;
+    border-radius: 4px !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    overflow: hidden !important;
   }
 
   .printable-bill-container img {
     display: block !important;
-    max-height: 36px !important;
+    max-height: 34px !important;
     width: auto !important;
-    margin: 0 auto 3px auto !important;
+    margin: 0 auto 2px auto !important;
   }
 
   .printable-bill-container h2 {
-    font-size: 13px !important;
+    font-size: 12pt !important;
     margin-bottom: 1px !important;
   }
 
   .printable-bill-container .mb-4,
   .printable-bill-container .mb-5,
   .printable-bill-container .mb-6 {
-    margin-bottom: 5px !important;
+    margin-bottom: 4px !important;
   }
 
   .printable-bill-container .pb-4 {
-    padding-bottom: 4px !important;
+    padding-bottom: 3px !important;
   }
 
   .printable-bill-container .pt-3,
   .printable-bill-container .pt-4 {
-    padding-top: 4px !important;
+    padding-top: 3px !important;
   }
 
   .printable-bill-container .p-3,
   .printable-bill-container .p-6 {
-    padding: 5px 8px !important;
+    padding: 4px 6px !important;
   }
 
   .printable-bill-container table {
-    font-size: 9px !important;
+    font-size: 8.5pt !important;
     width: 100% !important;
-    margin-bottom: 5px !important;
+    margin-bottom: 4px !important;
   }
 
   .printable-bill-container td,
   .printable-bill-container th {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
+    padding-top: 1.5px !important;
+    padding-bottom: 1.5px !important;
   }
 }
