@@ -7,6 +7,7 @@ import {
   ArrowDownRight, Building2, Percent, Sparkles, PieChart, ShieldCheck,
   Printer, FileText, CheckCircle2
 } from 'lucide-react';
+import { SENASUMA_LOGO_B64 } from './logoData';
 
 // Configuration
 const CATEGORIES = {
@@ -68,7 +69,10 @@ export default function App() {
   const [billCheckOut, setBillCheckOut] = useState(getTodayString());
   const [billRate, setBillRate] = useState('15000');
   const [billNights, setBillNights] = useState('2');
-  const [billExtras, setBillExtras] = useState('0');
+  const [billExtra1Name, setBillExtra1Name] = useState('');
+  const [billExtra1Amount, setBillExtra1Amount] = useState('0');
+  const [billExtra2Name, setBillExtra2Name] = useState('');
+  const [billExtra2Amount, setBillExtra2Amount] = useState('0');
   const [billDiscount, setBillDiscount] = useState('0');
   const [billNotes, setBillNotes] = useState('Thank you for staying with us!');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -218,7 +222,9 @@ export default function App() {
 
   // --- Bill Generator Calculations & Handlers ---
   const roomTotal = (parseFloat(billRate) || 0) * (parseFloat(billNights) || 1);
-  const extraTotal = parseFloat(billExtras) || 0;
+  const extra1Val = parseFloat(billExtra1Amount) || 0;
+  const extra2Val = parseFloat(billExtra2Amount) || 0;
+  const extraTotal = extra1Val + extra2Val;
   const discountTotal = parseFloat(billDiscount) || 0;
   const billGrandTotal = Math.max(0, roomTotal + extraTotal - discountTotal);
 
@@ -807,9 +813,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Rate / Night</label>
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Rate / Night (රු.)</label>
                   <input 
                     type="number" 
                     placeholder="15000"
@@ -820,7 +826,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Nights</label>
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Nights Count</label>
                   <input 
                     type="number" 
                     placeholder="2"
@@ -829,21 +835,53 @@ export default function App() {
                     className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-center focus:outline-none focus:border-amber-500"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Extras (Food/etc)</label>
+              {/* Extra Charge 1 */}
+              <div className="space-y-1 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-700/50">
+                <label className="text-3xs font-bold text-amber-400 uppercase tracking-wider block">+ Extra Charge 1 (Optional)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Charge Name (e.g. Dinner / Tour)"
+                    value={billExtra1Name}
+                    onChange={(e) => setBillExtra1Name(e.target.value)}
+                    className="col-span-2 px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
                   <input 
                     type="number" 
-                    placeholder="0"
-                    value={billExtras}
-                    onChange={(e) => setBillExtras(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                    placeholder="Amount"
+                    value={billExtra1Amount}
+                    onChange={(e) => setBillExtra1Amount(e.target.value)}
+                    className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
+              {/* Extra Charge 2 */}
+              <div className="space-y-1 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-700/50">
+                <label className="text-3xs font-bold text-amber-400 uppercase tracking-wider block">+ Extra Charge 2 (Optional)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Charge Name (e.g. Laundry / Drinks)"
+                    value={billExtra2Name}
+                    onChange={(e) => setBillExtra2Name(e.target.value)}
+                    className="col-span-2 px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Amount"
+                    value={billExtra2Amount}
+                    onChange={(e) => setBillExtra2Amount(e.target.value)}
+                    className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Discount Input */}
               <div className="space-y-1">
-                <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Discount (රු.)</label>
+                <label className="text-3xs font-bold text-rose-400 uppercase tracking-wider block">- Special Discount (රු.)</label>
                 <input 
                   type="number" 
                   placeholder="0"
@@ -878,15 +916,15 @@ export default function App() {
               {/* Receipt Header */}
               <div className="text-center border-b border-slate-200 pb-4 mb-4">
                 <img 
-                  src="/logo.jpg" 
-                  alt="Senasuma Homestay Ella" 
-                  className="h-20 mx-auto mb-2 object-contain block" 
+                  src={SENASUMA_LOGO_B64} 
+                  alt="" 
+                  className="h-20 mx-auto mb-1 object-contain block" 
                 />
-                <h2 className="text-xl font-black text-slate-950 tracking-tight uppercase">Senasuma Inn</h2>
+                <h2 className="text-xl font-black text-slate-950 tracking-tight uppercase">SENASUMA INN</h2>
                 <p className="text-xs font-semibold text-slate-700">Waterfall Road, Ella</p>
                 <p className="text-3xs text-slate-600 font-medium">Tel: +9471 411 0 211 | Email: senasumahomestay@gmail.com</p>
                 <div className="mt-2 inline-block bg-slate-100 px-3 py-1 rounded-full text-3xs font-bold text-slate-800 uppercase tracking-wide">
-                  Guest Accommodation Receipt
+                  GUEST ACCOMMODATION RECEIPT
                 </div>
                 <p className="text-3xs text-slate-400 mt-2 font-mono">Date: {getTodayString()} | Receipt #{Math.floor(100000 + Math.random() * 900000)}</p>
               </div>
@@ -894,19 +932,19 @@ export default function App() {
               {/* Guest & Stay Details */}
               <div className="grid grid-cols-2 gap-4 text-xs mb-5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                 <div>
-                  <span className="text-slate-400 text-3xs uppercase font-bold block">Guest Name</span>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">GUEST NAME</span>
                   <span className="font-bold text-slate-900">{billGuestName || 'Guest Customer'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-3xs uppercase font-bold block">Room / Accommodation</span>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">ROOM / ACCOMMODATION</span>
                   <span className="font-bold text-slate-900">{billRoomNo || 'Standard Room'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-3xs uppercase font-bold block">Check-in</span>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">CHECK-IN</span>
                   <span className="font-semibold text-slate-700">{billCheckIn}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-3xs uppercase font-bold block">Check-out</span>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">CHECK-OUT</span>
                   <span className="font-semibold text-slate-700">{billCheckOut}</span>
                 </div>
               </div>
@@ -915,10 +953,10 @@ export default function App() {
               <table className="w-full text-xs text-left border-collapse mb-5">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500 font-bold text-3xs uppercase">
-                    <th className="py-2">Description</th>
-                    <th className="py-2 text-center">Qty/Nights</th>
-                    <th className="py-2 text-right">Rate</th>
-                    <th className="py-2 text-right">Total</th>
+                    <th className="py-2">DESCRIPTION</th>
+                    <th className="py-2 text-center">QTY/NIGHTS</th>
+                    <th className="py-2 text-right">RATE</th>
+                    <th className="py-2 text-right">TOTAL</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -928,12 +966,20 @@ export default function App() {
                     <td className="py-2.5 text-right text-slate-600">රු. {(parseFloat(billRate)||0).toLocaleString()}</td>
                     <td className="py-2.5 text-right font-bold text-slate-900">රු. {roomTotal.toLocaleString()}</td>
                   </tr>
-                  {extraTotal > 0 && (
+                  {extra1Val > 0 && (
                     <tr>
-                      <td className="py-2.5 font-medium text-slate-800">Extra Services / Meals</td>
+                      <td className="py-2.5 font-medium text-slate-800">{billExtra1Name.trim() || 'Extra Charge 1'}</td>
                       <td className="py-2.5 text-center text-slate-600">1</td>
-                      <td className="py-2.5 text-right text-slate-600">රු. {extraTotal.toLocaleString()}</td>
-                      <td className="py-2.5 text-right font-bold text-slate-900">රු. {extraTotal.toLocaleString()}</td>
+                      <td className="py-2.5 text-right text-slate-600">රු. {extra1Val.toLocaleString()}</td>
+                      <td className="py-2.5 text-right font-bold text-slate-900">රු. {extra1Val.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  {extra2Val > 0 && (
+                    <tr>
+                      <td className="py-2.5 font-medium text-slate-800">{billExtra2Name.trim() || 'Extra Charge 2'}</td>
+                      <td className="py-2.5 text-center text-slate-600">1</td>
+                      <td className="py-2.5 text-right text-slate-600">රු. {extra2Val.toLocaleString()}</td>
+                      <td className="py-2.5 text-right font-bold text-slate-900">රු. {extra2Val.toLocaleString()}</td>
                     </tr>
                   )}
                   {discountTotal > 0 && (
@@ -949,7 +995,7 @@ export default function App() {
 
               {/* Total Calculation Card */}
               <div className="border-t-2 border-slate-900 pt-3 flex justify-between items-center mb-6">
-                <span className="font-black text-base text-slate-950 uppercase tracking-wider">Total</span>
+                <span className="font-black text-base text-slate-950 uppercase tracking-wider">TOTAL</span>
                 <span className="text-xl font-black text-slate-950 Outfit">
                   රු. {billGrandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
