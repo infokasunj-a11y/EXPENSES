@@ -4,7 +4,8 @@ import {
   ShoppingBag, Film, Heart, HelpCircle, Plus, Trash2, 
   Edit2, X, BarChart2, List, Settings, Search, 
   RefreshCw, TrendingUp, Calendar, User, ArrowUpRight, 
-  ArrowDownRight, Building2, Percent, Sparkles, PieChart, ShieldCheck
+  ArrowDownRight, Building2, Percent, Sparkles, PieChart, ShieldCheck,
+  Printer, FileText, CheckCircle2
 } from 'lucide-react';
 
 // Configuration
@@ -32,7 +33,7 @@ const PROFILES = ['Husband', 'Wife'];
 
 export default function App() {
   // Navigation & UI States
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'transactions', 'bills', 'analytics', 'settings'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -50,7 +51,7 @@ export default function App() {
     return `${year}-${month}-${day}`;
   };
 
-  // Form States
+  // Form States for Transactions
   const [formType, setFormType] = useState('income');
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState('Hotel Income');
@@ -59,6 +60,19 @@ export default function App() {
   const [formNotes, setFormNotes] = useState('');
   const [formUser, setFormUser] = useState('Husband');
   const [editingId, setEditingId] = useState(null);
+
+  // Bill Generator States
+  const [billGuestName, setBillGuestName] = useState('');
+  const [billRoomNo, setBillRoomNo] = useState('Deluxe Room #101');
+  const [billCheckIn, setBillCheckIn] = useState(getTodayString());
+  const [billCheckOut, setBillCheckOut] = useState(getTodayString());
+  const [billRate, setBillRate] = useState('15000');
+  const [billNights, setBillNights] = useState('2');
+  const [billExtras, setBillExtras] = useState('0');
+  const [billDiscount, setBillDiscount] = useState('0');
+  const [billNotes, setBillNotes] = useState('Thank you for staying with us!');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [syncedBillSuccess, setSyncedBillSuccess] = useState(false);
 
   // Filter States
   const [filterType, setFilterType] = useState('all');
@@ -101,7 +115,7 @@ export default function App() {
     }
   }, [formType]);
 
-  // Handle Form Submission
+  // Handle Form Submission for Transactions
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formAmount || isNaN(formAmount) || parseFloat(formAmount) <= 0) {
@@ -202,6 +216,58 @@ export default function App() {
     setFormUser('Husband');
   };
 
+  // --- Bill Generator Calculations & Handlers ---
+  const roomTotal = (parseFloat(billRate) || 0) * (parseFloat(billNights) || 1);
+  const extraTotal = parseFloat(billExtras) || 0;
+  const discountTotal = parseFloat(billDiscount) || 0;
+  const billGrandTotal = Math.max(0, roomTotal + extraTotal - discountTotal);
+
+  // Sync Generated Bill directly into Hotel Income
+  const handleSyncBillToIncome = async () => {
+    if (billGrandTotal <= 0) {
+      alert('Please enter a valid bill total');
+      return;
+    }
+
+    const transactionData = {
+      amount: billGrandTotal,
+      type: 'income',
+      category: 'Hotel Income',
+      commissionRate: 23,
+      date: billCheckIn || getTodayString(),
+      notes: `Bill: ${billGuestName || 'Guest'} (${billRoomNo})`,
+      addedBy: 'Common (Hotel)'
+    };
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify(transactionData)
+      });
+
+      if (!response.ok) throw new Error('Failed to sync bill');
+      
+      await fetchTransactions();
+      setSyncedBillSuccess(true);
+      setTimeout(() => setSyncedBillSuccess(false), 4000);
+    } catch (err) {
+      alert('Error syncing bill to income.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger Browser Native Print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Date Navigation Helpers
   const nextMonth = () => {
     if (currentMonth === 11) {
@@ -230,13 +296,12 @@ export default function App() {
   };
 
   // --- Filtering & Hotel Calculations ---
-  
   const monthlyTransactions = transactions.filter(tx => {
     if (!tx.date) return false;
     const parts = tx.date.split('-');
     if (parts.length < 3) return false;
     const txYear = parseInt(parts[0], 10);
-    const txMonth = parseInt(parts[1], 10) - 1; // 0-indexed month
+    const txMonth = parseInt(parts[1], 10) - 1;
     return txYear === currentYear && txMonth === currentMonth;
   });
 
@@ -256,7 +321,6 @@ export default function App() {
 
   // Total Real Income (Net Hotel Income + Other Incomes)
   const totalNetIncome = totalHotelNet + nonHotelIncome;
-  const totalGrossIncome = totalHotelGross + nonHotelIncome;
 
   // Total Expenses
   const monthlyExpense = monthlyTransactions
@@ -268,8 +332,6 @@ export default function App() {
 
   // Filtered transactions for History list
   const filteredTransactions = transactions.filter(tx => {
-    const txDate = new Date(tx.date);
-    const matchesMonth = txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth;
     const matchesType = filterType === 'all' ? true : tx.type === filterType;
     const matchesCategory = filterCategory === 'all' ? true : tx.category === filterCategory;
     const matchesSearch = searchQuery === '' ? true : (
@@ -278,7 +340,7 @@ export default function App() {
       (tx.addedBy && tx.addedBy.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    return matchesMonth && matchesType && matchesCategory && matchesSearch;
+    return matchesType && matchesCategory && matchesSearch;
   });
 
   // Category breakdown for Analytics
@@ -326,8 +388,7 @@ export default function App() {
       <div className="safe-pt bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-900"></div>
 
       {/* Modern Glassmorphic Header */}
-      <header className="bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-900 text-white px-5 pt-5 pb-6 rounded-b-[2.5rem] shadow-xl border-b border-indigo-500/20 backdrop-blur-lg relative overflow-hidden">
-        {/* Glow backdrop decorative circles */}
+      <header className="bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-900 text-white px-5 pt-5 pb-6 rounded-b-[2.5rem] shadow-xl border-b border-indigo-500/20 backdrop-blur-lg relative overflow-hidden no-print">
         <div className="absolute -top-12 -right-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -370,7 +431,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 px-4 py-4 overflow-y-auto space-y-5">
         {error && (
-          <div className="bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs p-3.5 rounded-2xl flex items-center space-x-2 backdrop-blur-md">
+          <div className="bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs p-3.5 rounded-2xl flex items-center space-x-2 backdrop-blur-md no-print">
             <span className="text-sm">⚠️</span>
             <p className="flex-1">{error}</p>
           </div>
@@ -379,8 +440,6 @@ export default function App() {
         {/* Tab 1: Dashboard Overview */}
         {activeTab === 'dashboard' && (
           <div className="space-y-5 fade-in">
-            
-            {/* Main Balance Hero Card */}
             <div className="bg-gradient-to-br from-slate-800 via-slate-850 to-indigo-950/90 rounded-3xl p-5 shadow-2xl border border-slate-700/50 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
               
@@ -424,7 +483,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Special Feature: Hotel Earnings & 23% Commission Card */}
+            {/* Hotel Business Summary */}
             <div className="bg-gradient-to-br from-amber-950/40 via-slate-800 to-emerald-950/30 rounded-3xl p-5 shadow-xl border border-amber-500/30 relative overflow-hidden">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center space-x-2">
@@ -455,7 +514,6 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-3 mt-4">
-                  {/* Gross vs Commission vs Net Grid */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-slate-900/60 p-2.5 rounded-2xl border border-slate-700/60 text-center">
                       <span className="text-[10px] text-slate-400 block font-medium">Gross Revenue</span>
@@ -479,7 +537,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Visual Split Bar */}
                   <div className="space-y-1 pt-1">
                     <div className="flex justify-between text-3xs text-slate-400">
                       <span>Keep (77%): <strong>රු. {totalHotelNet.toLocaleString()}</strong></span>
@@ -493,7 +550,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Quick Title & Recent Activity */}
+            {/* Quick Actions / Title */}
             <div className="flex justify-between items-center px-1">
               <h3 className="font-bold text-slate-200 text-sm tracking-wide">Recent Transactions</h3>
               <button 
@@ -569,35 +626,12 @@ export default function App() {
                 ))
               )}
             </div>
-
-            {/* Expenses Category Progress Breakdown */}
-            {sortedCategories.length > 0 && (
-              <div className="bg-slate-800/80 rounded-3xl p-5 shadow-sm border border-slate-700/60 space-y-4">
-                <h3 className="font-bold text-slate-200 text-xs tracking-wide">Expense Categories</h3>
-                <div className="space-y-3">
-                  {sortedCategories.slice(0, 3).map(cat => (
-                    <div key={cat.name} className="space-y-1.5">
-                      <div className="flex justify-between text-2xs">
-                        <span className="font-semibold text-slate-300">{cat.name}</span>
-                        <span className="text-slate-400 Outfit">
-                          රු. {cat.amount.toLocaleString()} ({cat.percentage}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700/40">
-                        <div className={`h-full ${cat.color}`} style={{ width: `${cat.percentage}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         {/* Tab 2: Transactions List */}
         {activeTab === 'transactions' && (
           <div className="space-y-4 fade-in">
-            {/* Filter controls */}
             <div className="bg-slate-800/80 rounded-3xl p-4 shadow-sm border border-slate-700/60 space-y-3">
               <div className="relative">
                 <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
@@ -705,10 +739,228 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 3: Analytics */}
+        {/* Tab 3: Hotel Guest Bill / Receipt Generator */}
+        {activeTab === 'bills' && (
+          <div className="space-y-5 fade-in">
+            {/* Bill Maker Form Card */}
+            <div className="bg-slate-800/80 rounded-3xl p-5 shadow-sm border border-slate-700/60 space-y-4 no-print">
+              <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
+                <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
+                  <Printer size={18} className="text-amber-400" />
+                  Hotel Guest Bill Generator
+                </h3>
+                <span className="text-3xs bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
+                  Print Ready
+                </span>
+              </div>
+
+              {syncedBillSuccess && (
+                <div className="bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-2xs p-3 rounded-2xl flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                  <p className="flex-1 font-semibold">Bill successfully synced to Hotel Income with 23% Commission!</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Guest Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. John Doe / Mr. Perera"
+                    value={billGuestName}
+                    onChange={(e) => setBillGuestName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Room / Villa No</label>
+                  <input 
+                    type="text" 
+                    placeholder="Deluxe Room #101"
+                    value={billRoomNo}
+                    onChange={(e) => setBillRoomNo(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Check-in Date</label>
+                  <input 
+                    type="date" 
+                    value={billCheckIn}
+                    onChange={(e) => setBillCheckIn(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Check-out Date</label>
+                  <input 
+                    type="date" 
+                    value={billCheckOut}
+                    onChange={(e) => setBillCheckOut(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Rate / Night</label>
+                  <input 
+                    type="number" 
+                    placeholder="15000"
+                    value={billRate}
+                    onChange={(e) => setBillRate(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Nights</label>
+                  <input 
+                    type="number" 
+                    placeholder="2"
+                    value={billNights}
+                    onChange={(e) => setBillNights(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-center focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Extras (Food/etc)</label>
+                  <input 
+                    type="number" 
+                    placeholder="0"
+                    value={billExtras}
+                    onChange={(e) => setBillExtras(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">Discount (රු.)</label>
+                <input 
+                  type="number" 
+                  placeholder="0"
+                  value={billDiscount}
+                  onChange={(e) => setBillDiscount(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold rounded-2xl text-xs shadow-lg active:scale-98 transition flex items-center justify-center gap-1.5"
+                >
+                  <Printer size={16} /> Print / Save PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSyncBillToIncome}
+                  className="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs shadow-lg active:scale-98 transition flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={16} /> Sync to Income
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Receipt Preview Box */}
+            <div className="bg-white text-slate-950 rounded-3xl p-6 shadow-2xl border border-slate-200 printable-bill-container">
+              {/* Receipt Header */}
+              <div className="text-center border-b border-slate-200 pb-4 mb-4">
+                <div className="flex justify-center items-center space-x-2 mb-1">
+                  <Building2 className="text-slate-900" size={24} />
+                  <h2 className="text-xl font-extrabold text-slate-950 tracking-tight">අපේ සල්ලි Hotel & Villa</h2>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">Guest Accommodation Receipt / Bill</p>
+                <p className="text-3xs text-slate-400 mt-1 font-mono">Date: {getTodayString()} | Receipt #{Math.floor(100000 + Math.random() * 900000)}</p>
+              </div>
+
+              {/* Guest & Stay Details */}
+              <div className="grid grid-cols-2 gap-4 text-xs mb-5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">Guest Name</span>
+                  <span className="font-bold text-slate-900">{billGuestName || 'Guest Customer'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">Room / Accommodation</span>
+                  <span className="font-bold text-slate-900">{billRoomNo || 'Standard Room'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">Check-in</span>
+                  <span className="font-semibold text-slate-700">{billCheckIn}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-3xs uppercase font-bold block">Check-out</span>
+                  <span className="font-semibold text-slate-700">{billCheckOut}</span>
+                </div>
+              </div>
+
+              {/* Itemized Charges Table */}
+              <table className="w-full text-xs text-left border-collapse mb-5">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold text-3xs uppercase">
+                    <th className="py-2">Description</th>
+                    <th className="py-2 text-center">Qty/Nights</th>
+                    <th className="py-2 text-right">Rate</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="py-2.5 font-medium text-slate-800">Room Accommodation</td>
+                    <td className="py-2.5 text-center text-slate-600">{billNights} Nights</td>
+                    <td className="py-2.5 text-right text-slate-600">රු. {(parseFloat(billRate)||0).toLocaleString()}</td>
+                    <td className="py-2.5 text-right font-bold text-slate-900">රු. {roomTotal.toLocaleString()}</td>
+                  </tr>
+                  {extraTotal > 0 && (
+                    <tr>
+                      <td className="py-2.5 font-medium text-slate-800">Extra Services / Meals</td>
+                      <td className="py-2.5 text-center text-slate-600">1</td>
+                      <td className="py-2.5 text-right text-slate-600">රු. {extraTotal.toLocaleString()}</td>
+                      <td className="py-2.5 text-right font-bold text-slate-900">රු. {extraTotal.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  {discountTotal > 0 && (
+                    <tr className="text-rose-600">
+                      <td className="py-2.5 font-medium">Special Discount</td>
+                      <td className="py-2.5 text-center">-</td>
+                      <td className="py-2.5 text-right">-</td>
+                      <td className="py-2.5 text-right font-bold">- රු. {discountTotal.toLocaleString()}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Total Calculation Card */}
+              <div className="border-t-2 border-slate-900 pt-3 flex justify-between items-center mb-6">
+                <span className="font-extrabold text-sm text-slate-950 uppercase tracking-wider">Grand Total Paid</span>
+                <span className="text-xl font-black text-slate-950 Outfit">
+                  රු. {billGrandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              {/* Receipt Footer */}
+              <div className="text-center text-3xs text-slate-500 border-t border-dashed border-slate-200 pt-4">
+                <p className="italic font-medium">"{billNotes}"</p>
+                <p className="mt-1 font-semibold text-slate-400">Generated by අපේ සල්ලි Hotel Management</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Analytics */}
         {activeTab === 'analytics' && (
           <div className="space-y-5 fade-in">
-            {/* Visual SVG Donut Chart */}
             <div className="bg-slate-800/80 rounded-3xl p-5 shadow-sm border border-slate-700/60 flex flex-col items-center">
               <h3 className="font-bold text-slate-200 text-xs mb-4 self-start flex items-center gap-1.5">
                 <PieChart size={16} className="text-indigo-400" /> Expense Distribution
@@ -784,7 +1036,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Husband vs Wife Spend breakdown */}
             <div className="bg-slate-800/80 rounded-3xl p-5 shadow-sm border border-slate-700/60 space-y-4">
               <h3 className="font-bold text-slate-200 text-xs">Spend by Person</h3>
               <div className="space-y-4">
@@ -818,7 +1069,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 4: Sync & Settings */}
+        {/* Tab 5: Sync & Settings */}
         {activeTab === 'settings' && (
           <div className="space-y-5 fade-in">
             <div className="bg-slate-800/80 rounded-3xl p-5 shadow-sm border border-slate-700/60 space-y-4 text-center">
@@ -858,51 +1109,51 @@ export default function App() {
       <button 
         onClick={() => { setEditingId(null); setIsModalOpen(true); }}
         style={{ bottom: '1.25rem', left: '50%', transform: 'translateX(-50%)' }}
-        className="fixed w-14 h-14 bg-gradient-to-tr from-indigo-600 to-amber-500 hover:from-indigo-500 hover:to-amber-400 text-white rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition z-30 border border-white/20"
+        className="fixed w-14 h-14 bg-gradient-to-tr from-indigo-600 to-amber-500 hover:from-indigo-500 hover:to-amber-400 text-white rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition z-30 border border-white/20 no-print"
       >
         <Plus size={28} />
       </button>
 
       {/* iOS-Style Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 px-6 py-3 flex justify-between items-center safe-pb shadow-2xl z-20">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 px-4 py-3 flex justify-between items-center safe-pb shadow-2xl z-20 no-print">
         <button 
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center space-y-1 transition ${activeTab === 'dashboard' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
         >
-          <List size={20} />
-          <span className="text-[10px]">Overview</span>
+          <List size={18} />
+          <span className="text-[9px]">Overview</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('transactions')}
           className={`flex flex-col items-center space-y-1 transition ${activeTab === 'transactions' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
         >
-          <List size={20} />
-          <span className="text-[10px]">History</span>
+          <List size={18} />
+          <span className="text-[9px]">History</span>
         </button>
 
-        <div className="w-10"></div>
+        <div className="w-8"></div>
+
+        <button 
+          onClick={() => setActiveTab('bills')}
+          className={`flex flex-col items-center space-y-1 transition ${activeTab === 'bills' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <Printer size={18} />
+          <span className="text-[9px]">Bills</span>
+        </button>
 
         <button 
           onClick={() => setActiveTab('analytics')}
           className={`flex flex-col items-center space-y-1 transition ${activeTab === 'analytics' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
         >
-          <BarChart2 size={20} />
-          <span className="text-[10px]">Analytics</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center space-y-1 transition ${activeTab === 'settings' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-        >
-          <Settings size={20} />
-          <span className="text-[10px]">Sync</span>
+          <BarChart2 size={18} />
+          <span className="text-[9px]">Analytics</span>
         </button>
       </nav>
 
       {/* Slide-up Transaction Form Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-end justify-center">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-end justify-center no-print">
           <div className="absolute inset-0" onClick={closeFormModal}></div>
           
           <div className="bg-slate-900 border-t border-slate-700/80 rounded-t-[2.5rem] w-full max-w-md p-6 relative z-10 animate-slide-up pb-8 shadow-2xl max-h-[90vh] overflow-y-auto">

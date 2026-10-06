@@ -47,3 +47,48 @@
 .animate-slide-up {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Clean Mini Print Receipt Styling (A6 / 80mm POS Thermal Printer support) */
+@media print {
+  @page {
+    size: auto;
+    margin: 4mm;
+  }
+
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide app navigation, headers, floating buttons, modals background */
+  header, nav, button, .no-print, svg {
+    display: none !important;
+  }
+
+  /* Compact printable receipt fitting A6 paper or 80mm receipt printer */
+  .printable-bill-container {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 95mm !important; /* Mini compact width (A6 / POS Thermal size) */
+    margin: 0 auto !important;
+    padding: 12px !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  .printable-bill-container h2 {
+    font-size: 16px !important;
+  }
+
+  .printable-bill-container table {
+    font-size: 10px !important;
+  }
+}
