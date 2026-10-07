@@ -48,11 +48,11 @@
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Clean Mini Print Receipt Styling (Exact 1/4 A4 Cut Paper: 105mm x 148mm) */
+/* Clean Mini Print Receipt Styling (Physical Printer Tray Aligned: 1/4 A4 Cut Paper) */
 @media print {
   @page {
     size: auto;
-    margin: 4mm;
+    margin: 0;
   }
 
   /* Force white background & reset wrapper constraints */
@@ -86,18 +86,17 @@
     visibility: visible !important;
   }
 
-  /* Compact centered receipt card fitting 1/4 A4 paper with safe side margins */
+  /* Physical printer tray aligned 1/4 A4 cut paper receipt container */
   .printable-bill-container {
     display: block !important;
-    position: relative !important;
-    top: 0 !important;
-    left: 0 !important;
-    transform: none !important;
-    width: 100% !important;
-    max-width: 340px !important; /* ~90mm compact width with safe margins on both sides */
+    position: absolute !important;
+    top: 4mm !important;
+    left: 25mm !important; /* 25mm (1 inch) tray offset so text lands squarely on cut sheet */
+    width: 95mm !important;
+    max-width: 95mm !important;
     box-sizing: border-box !important;
-    margin: 0 auto !important;
-    padding: 8px 10px !important;
+    margin: 0 !important;
+    padding: 6px 8px !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
