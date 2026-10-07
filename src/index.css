@@ -87,12 +87,12 @@
     visibility: visible !important;
   }
 
-  /* Exact 1/4 A4 Cut Paper Container (105mm x 148mm) */
+  /* Exact 1/4 A4 Cut Paper Container (105mm x 148mm) - Shifted 1.8in Right */
   .printable-bill-container {
     display: block !important;
     position: absolute !important;
     top: 0 !important;
-    left: 0 !important;
+    left: 1.8in !important; /* Shifted 1.8 inches to the right for paper alignment */
     width: 105mm !important;
     height: 148mm !important;
     max-width: 105mm !important;
