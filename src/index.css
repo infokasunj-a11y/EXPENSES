@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 @layer base {
   :root {
     --sat: env(safe-area-inset-top);
@@ -9,21 +8,17 @@
     --sab: env(safe-area-inset-bottom);
     --sal: env(safe-area-inset-left);
   }
-
   body {
     -webkit-tap-highlight-color: transparent;
     font-family: 'Outfit', 'Noto Sans Sinhala', 'Inter', -apple-system, sans-serif;
   }
 }
-
 .safe-pb {
   padding-bottom: env(safe-area-inset-bottom);
 }
-
 .safe-pt {
   padding-top: env(safe-area-inset-top);
 }
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -31,7 +26,6 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -40,18 +34,15 @@
     transform: translateY(0);
   }
 }
-
 .animate-slide-up {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 /* Clean Native Print Receipt Styling */
 @media print {
   @page {
     size: auto;
     margin: 8mm;
   }
-
   html, body, #root, #root > div, main {
     background: #ffffff !important;
     background-color: #ffffff !important;
@@ -64,20 +55,16 @@
     box-shadow: none !important;
     border: none !important;
   }
-
   header, nav, button, .no-print, svg {
     display: none !important;
   }
-
   body * {
     visibility: hidden !important;
   }
-
   .printable-bill-container,
   .printable-bill-container * {
     visibility: visible !important;
   }
-
   .printable-bill-container {
     display: block !important;
     position: relative !important;
@@ -96,25 +83,21 @@
     font-size: 10pt !important;
     line-height: 1.3 !important;
   }
-
   .printable-bill-container img {
     display: block !important;
     max-height: 48px !important;
     width: auto !important;
     margin: 0 auto 4px auto !important;
   }
-
   .printable-bill-container h2 {
     font-size: 14pt !important;
     margin-bottom: 2px !important;
   }
-
   .printable-bill-container table {
     font-size: 9.5pt !important;
     width: 100% !important;
     margin-bottom: 6px !important;
   }
-
   .printable-bill-container td,
   .printable-bill-container th {
     padding-top: 3px !important;
