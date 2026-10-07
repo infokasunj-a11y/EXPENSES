@@ -16,7 +16,6 @@
   }
 }
 
-/* Custom CSS utilities for mobile feel */
 .safe-pb {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -25,7 +24,6 @@
   padding-top: env(safe-area-inset-top);
 }
 
-/* Hide scrollbars but keep functionality */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -34,7 +32,6 @@
   scrollbar-width: none;
 }
 
-/* Add custom animations for modal slides */
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -52,10 +49,9 @@
 @media print {
   @page {
     size: auto;
-    margin: 8mm; /* Safe natural 8mm margin on all 4 sides */
+    margin: 8mm;
   }
 
-  /* Force clean white background on all parent elements */
   html, body, #root, #root > div, main {
     background: #ffffff !important;
     background-color: #ffffff !important;
@@ -69,12 +65,10 @@
     border: none !important;
   }
 
-  /* Hide navigation, buttons, non-print items */
   header, nav, button, .no-print, svg {
     display: none !important;
   }
 
-  /* Isolate receipt element from rest of app */
   body * {
     visibility: hidden !important;
   }
@@ -84,7 +78,6 @@
     visibility: visible !important;
   }
 
-  /* Natural centered receipt container */
   .printable-bill-container {
     display: block !important;
     position: relative !important;
