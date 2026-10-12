@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Banknote, Briefcase, Utensils, Flame, Home, Car, 
   ShoppingBag, Film, Heart, HelpCircle, Plus, Trash2, 
   Edit2, X, BarChart2, List, Settings, Search, 
   RefreshCw, TrendingUp, Calendar, User, ArrowUpRight, 
   ArrowDownRight, Building2, Percent, Sparkles, PieChart, ShieldCheck,
-  Printer, FileText, CheckCircle2
+  Printer, FileText, CheckCircle2, Download, Image as ImageIcon, Loader2
 } from 'lucide-react';
 import { SENASUMA_LOGO_B64 } from './logoData';
 
@@ -77,6 +77,10 @@ export default function App() {
   const [billNotes, setBillNotes] = useState('Thank you for staying with us!');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [syncedBillSuccess, setSyncedBillSuccess] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingImg, setDownloadingImg] = useState(false);
+  const [receiptNo] = useState(() => Math.floor(100000 + Math.random() * 900000));
+  const billRef = useRef(null);
 
   // Filter States
   const [filterType, setFilterType] = useState('all');
@@ -266,6 +270,128 @@ export default function App() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Dynamic script loader for html2canvas and jsPDF (works seamlessly on mobile and desktop)
+  const getPdfTools = async () => {
+    if (window.jspdf && window.html2canvas) {
+      return { jsPDF: window.jspdf.jsPDF, html2canvas: window.html2canvas };
+    }
+
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === 'true') return resolve();
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', (e) => reject(e));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => {
+        s.dataset.loaded = 'true';
+        resolve();
+      };
+      s.onerror = (e) => reject(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+    return { 
+      jsPDF: window.jspdf ? window.jspdf.jsPDF : null, 
+      html2canvas: window.html2canvas 
+    };
+  };
+
+  // Download exact A6 PDF (105mm x 148mm) - Clean, Zero browser URL/header/footer!
+  const handleDownloadA6Pdf = async () => {
+    if (!billRef.current) return;
+    setDownloadingPdf(true);
+    try {
+      const { jsPDF, html2canvas } = await getPdfTools();
+      if (!html2canvas || !jsPDF) {
+        throw new Error('PDF libraries could not be loaded');
+      }
+
+      const element = billRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 3, // High DPI for crisp text and logo
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      // Standard A6 Dimensions in mm: 105mm width x 148mm height (1/4 A4)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a6'
+      });
+
+      const pdfWidth = 105;
+      const pdfHeight = 148;
+      const margin = 4; // 4mm safe border margin
+      const availableWidth = pdfWidth - (margin * 2); // 97mm
+      const availableHeight = pdfHeight - (margin * 2); // 140mm
+
+      let renderWidth = availableWidth;
+      let renderHeight = (canvas.height * renderWidth) / canvas.width;
+
+      // Fit gracefully onto single A6 sheet
+      if (renderHeight > availableHeight) {
+        renderHeight = availableHeight;
+        renderWidth = (canvas.width * renderHeight) / canvas.height;
+      }
+
+      const x = (pdfWidth - renderWidth) / 2;
+      const y = renderHeight < (pdfHeight - 12) ? Math.max(margin, (pdfHeight - renderHeight) / 2) : margin;
+
+      pdf.addImage(imgData, 'JPEG', x, y, renderWidth, renderHeight, undefined, 'FAST');
+      
+      const guestCleanName = (billGuestName || 'Guest').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`Senasuma_Inn_A6_Bill_${guestCleanName}_${receiptNo}.pdf`);
+    } catch (err) {
+      console.error('PDF error:', err);
+      alert('Error downloading A6 PDF. Please check your internet connection.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  // Download high-resolution A6 image (PNG) for WhatsApp sharing or direct phone printing
+  const handleDownloadA6Image = async () => {
+    if (!billRef.current) return;
+    setDownloadingImg(true);
+    try {
+      const { html2canvas } = await getPdfTools();
+      if (!html2canvas) {
+        throw new Error('Canvas library could not be loaded');
+      }
+
+      const element = billRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const guestCleanName = (billGuestName || 'Guest').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const link = document.createElement('a');
+      link.download = `Senasuma_Inn_A6_Bill_${guestCleanName}_${receiptNo}.png`;
+      link.href = imgData;
+      link.click();
+    } catch (err) {
+      console.error('Image error:', err);
+      alert('Error downloading Image. Please check your internet connection.');
+    } finally {
+      setDownloadingImg(false);
     }
   };
 
@@ -892,27 +1018,71 @@ export default function App() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="space-y-2.5 pt-2">
+                {/* Primary Download Button: A6 PDF */}
                 <button
                   type="button"
-                  onClick={handlePrint}
-                  className="py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold rounded-2xl text-xs shadow-lg active:scale-98 transition flex items-center justify-center gap-1.5"
+                  onClick={handleDownloadA6Pdf}
+                  disabled={downloadingPdf || downloadingImg}
+                  className="w-full py-3.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black rounded-2xl text-xs shadow-xl active:scale-98 transition flex items-center justify-center gap-2"
                 >
-                  <Printer size={16} /> Print / Save PDF
+                  {downloadingPdf ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin text-slate-950" />
+                      <span>Generating A6 PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} className="text-slate-950 stroke-[2.5]" />
+                      <span>Download A6 Bill (PDF)</span>
+                    </>
+                  )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleSyncBillToIncome}
-                  className="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs shadow-lg active:scale-98 transition flex items-center justify-center gap-1.5"
-                >
-                  <Plus size={16} /> Sync to Income
-                </button>
+                {/* Secondary Actions Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadA6Image}
+                    disabled={downloadingPdf || downloadingImg}
+                    className="py-2.5 px-2 bg-slate-700/80 hover:bg-slate-700 text-white font-bold rounded-xl text-2xs shadow-md active:scale-98 transition flex items-center justify-center gap-1.5 border border-slate-600"
+                    title="Download A6 image for WhatsApp or mobile printer"
+                  >
+                    {downloadingImg ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <ImageIcon size={13} className="text-amber-400" />
+                    )}
+                    <span>Save Image</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="py-2.5 px-2 bg-slate-700/80 hover:bg-slate-700 text-white font-bold rounded-xl text-2xs shadow-md active:scale-98 transition flex items-center justify-center gap-1.5 border border-slate-600"
+                  >
+                    <Printer size={13} className="text-sky-400" />
+                    <span>Print Bill</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncBillToIncome}
+                    className="py-2.5 px-2 bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold rounded-xl text-2xs shadow-md active:scale-98 transition flex items-center justify-center gap-1.5 border border-emerald-500/40"
+                  >
+                    <Plus size={13} />
+                    <span>Sync Income</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Printable Receipt Preview Box */}
-            <div className="bg-white text-slate-950 rounded-3xl p-6 shadow-2xl border border-slate-200 printable-bill-container">
+            <div 
+              ref={billRef}
+              id="printable-bill"
+              className="bg-white text-slate-950 rounded-3xl p-6 shadow-2xl border border-slate-200 printable-bill-container"
+            >
               {/* Receipt Header */}
               <div className="text-center border-b border-slate-200 pb-4 mb-4">
                 <img 
@@ -926,7 +1096,7 @@ export default function App() {
                 <div className="mt-2 inline-block bg-slate-100 px-3 py-1 rounded-full text-3xs font-bold text-slate-800 uppercase tracking-wide">
                   GUEST ACCOMMODATION RECEIPT
                 </div>
-                <p className="text-3xs text-slate-400 mt-2 font-mono">Date: {getTodayString()} | Receipt #{Math.floor(100000 + Math.random() * 900000)}</p>
+                <p className="text-3xs text-slate-400 mt-2 font-mono">Date: {getTodayString()} | Receipt #{receiptNo}</p>
               </div>
 
               {/* Guest & Stay Details */}
